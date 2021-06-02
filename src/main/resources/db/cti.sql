@@ -4,7 +4,7 @@
  Source Server         : tencent
  Source Server Type    : MySQL
  Source Server Version : 50730
- Source Host           : 115.159.101.178:3306
+ Source Host           : 127.0.0.1:3306
  Source Schema         : cti
 
  Target Server Type    : MySQL
@@ -828,129 +828,5 @@ CREATE TABLE `cc_vdn_schedule_dtmf` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='按键导航表';
 
--- ----------------------------
--- Table structure for location
--- ----------------------------
-DROP TABLE IF EXISTS `location`;
-CREATE TABLE `location` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `ruid` varchar(64) NOT NULL DEFAULT '',
-  `username` varchar(64) NOT NULL DEFAULT '',
-  `domain` varchar(64) DEFAULT NULL,
-  `contact` varchar(255) NOT NULL DEFAULT '',
-  `received` varchar(128) DEFAULT NULL,
-  `path` varchar(512) DEFAULT NULL,
-  `expires` datetime NOT NULL DEFAULT '2030-05-28 21:32:15',
-  `q` float(10,2) NOT NULL DEFAULT '1.00',
-  `callid` varchar(255) NOT NULL DEFAULT 'Default-Call-ID',
-  `cseq` int(11) NOT NULL DEFAULT '1',
-  `last_modified` datetime NOT NULL DEFAULT '1900-01-01 00:00:01',
-  `flags` int(11) NOT NULL DEFAULT '0',
-  `cflags` int(11) NOT NULL DEFAULT '0',
-  `user_agent` varchar(255) NOT NULL DEFAULT '',
-  `socket` varchar(64) DEFAULT NULL,
-  `methods` int(11) DEFAULT NULL,
-  `instance` varchar(255) DEFAULT NULL,
-  `reg_id` int(11) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `ruid_idx` (`ruid`) USING BTREE,
-  KEY `account_contact_idx` (`username`,`domain`,`contact`) USING BTREE,
-  KEY `expires_idx` (`expires`) USING BTREE,
-  KEY `IDX_CA_CO_US` (`callid`,`contact`,`username`) USING BTREE,
-  KEY `IDX_CONTACT` (`contact`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=718 DEFAULT CHARSET=utf8;
 
--- ----------------------------
--- Table structure for siu_users
--- ----------------------------
-DROP TABLE IF EXISTS `siu_users`;
-CREATE TABLE `siu_users` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `companyid` int(11) NOT NULL COMMENT '企业ID',
-  `sip_id` varchar(50) NOT NULL COMMENT 'SIP账号',
-  `sip_password` varchar(255) NOT NULL COMMENT 'SIP密码',
-  `subaccound` varchar(255) DEFAULT NULL COMMENT '子帐号',
-  `subtoken` varchar(255) DEFAULT NULL COMMENT '子帐号令牌',
-  `bind_phoneid` int(255) DEFAULT NULL COMMENT '绑定的特服号ID',
-  `ccsdirectcallflag` tinyint(4) DEFAULT '1' COMMENT 'ccs是否支持硬话机外呼（0：不允许；1：允许)',
-  `sip_domain` varchar(255) DEFAULT NULL,
-  `type` int(11) DEFAULT NULL COMMENT '类型：1 ivr，2 ccs',
-  `stationno` int(11) DEFAULT NULL COMMENT '绑定IVR或CCS站点号',
-  `status` int(11) DEFAULT '1' COMMENT '账号是否有效：0：无效；1：有效',
-  `ctime` int(11) DEFAULT NULL,
-  `utime` int(11) DEFAULT '0',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `sip_id` (`sip_id`) USING BTREE,
-  KEY `sip_companyid` (`companyid`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=60862 DEFAULT CHARSET=utf8 COMMENT='SIP用户注册表';
 
--- ----------------------------
--- Table structure for ss_station
--- ----------------------------
-DROP TABLE IF EXISTS `ss_station`;
-CREATE TABLE `ss_station` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `station_no` int(11) NOT NULL COMMENT '站点号',
-  `station_type` int(11) NOT NULL COMMENT '站点类型:2:MG;3:SS；4：CCS;5:IVR;6:AAA,7:DBA;8:OAMSERVICE;9:WEBSERVICE;10:PDS;11:DIALER;12:SCHEDULE;13:CTISERVER;14:FILESERVER;15:APISERVER;16:statservice;17:TTS;18:cti录音模块.19：pdsmanage模块,20:NLP;21:ccsproxy;22:pushserver;100:ACD;101:newIVR;102clpss；103：crontab',
-  `ipaddr` varchar(32) DEFAULT NULL COMMENT 'IP地址',
-  `ipport` int(11) DEFAULT NULL COMMENT 'IP端口',
-  `redundance_ip` varchar(255) DEFAULT NULL COMMENT '冗余站点IP地址',
-  `redundance_port` int(11) DEFAULT NULL COMMENT '冗余站点端口',
-  `ipaddr_bak` varchar(20) DEFAULT NULL COMMENT '备用的IP，连接OAM的ws用',
-  `ipport_bak` int(5) DEFAULT NULL COMMENT '备用的端口，连接OAM的ws用 ccs开放pdstcp端口',
-  `ivrflowpath` varchar(255) DEFAULT NULL COMMENT 'IVR站点流程路径',
-  `validurl` varchar(255) DEFAULT NULL COMMENT '站点监听的有效URL（此字段为空，将以IP地址字段和Port字段拼出该站点URL）',
-  `redundance_validurl` varchar(255) DEFAULT NULL COMMENT '站点监听的冗余有效URL（此字段为空，将以IP地址字段和Port字段拼出该站点URL）',
-  `ccswebsocketurl` varchar(255) DEFAULT NULL COMMENT 'CCS websocket URL',
-  `memo` varchar(255) DEFAULT NULL COMMENT '备注',
-  `socketport` int(11) DEFAULT '0' COMMENT 'OAM，SS监听的TCP端口',
-  `ss_media_ip` varchar(32) DEFAULT NULL COMMENT 'SS媒体服务器地址',
-  `ss_media_port` int(11) DEFAULT NULL COMMENT 'SS媒体服务器端口',
-  `ss_media_playpath` varchar(255) DEFAULT NULL COMMENT 'SS对应的媒体服务器放音路径',
-  `ss_media_recordpath` varchar(255) DEFAULT NULL COMMENT 'SS对应的媒体服务器录音路径',
-  `ss_media_fileserverport` int(11) DEFAULT NULL COMMENT 'ss对应的媒体服务器文件接收端口或IVR文件接收端口',
-  `register_ip` varchar(255) DEFAULT NULL COMMENT 'SIP注册服务器地址',
-  `register_port` int(11) DEFAULT NULL COMMENT 'SIP注册服务器端口',
-  `cti_linkid` varchar(100) DEFAULT '' COMMENT 'CTI连接ID',
-  `cti_userid` varchar(100) DEFAULT '' COMMENT 'CTI用户ID',
-  `cti_password` varchar(100) DEFAULT '' COMMENT 'CTI用户密码',
-  `media_for_lan` int(11) DEFAULT '0' COMMENT 'MG是否用于内网，0代表本MG不用于内网，1代表本MG仅用于内网。默认是0',
-  `register_ip_lan` varchar(255) DEFAULT '' COMMENT '当MG用于内网的时候，注册的IP地址。',
-  `register_port_lan` int(11) DEFAULT '0' COMMENT '当MG用于内网的时候，注册的端口',
-  `tts_path` varchar(255) DEFAULT '' COMMENT '下载tts的wav文件存放的路径',
-  `tts_gateway_ip` varchar(255) DEFAULT '' COMMENT 'tts网关url',
-  `record_auth` varchar(255) DEFAULT '' COMMENT 'cti录音模块的auth',
-  `is_leader` tinyint(4) DEFAULT '0' COMMENT '站点是主备：1:主:，2:被，0: 默认没有含义',
-  `station_group` int(11) DEFAULT '0' COMMENT '站点分组概念主要服务于双中心。pds只加载同一个组里的任务',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `memo` (`memo`) USING BTREE,
-  KEY `index_no` (`station_no`) USING BTREE,
-  KEY `prim_ip_index` (`ipaddr`) USING BTREE,
-  KEY `redundance_ip_index` (`redundance_ip`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=198 DEFAULT CHARSET=utf8 COMMENT='站点信息表';
-
--- ----------------------------
--- Table structure for ss_stationrelation
--- ----------------------------
-DROP TABLE IF EXISTS `ss_stationrelation`;
-CREATE TABLE `ss_stationrelation` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '站点关联表',
-  `stationno` int(11) DEFAULT NULL COMMENT '站点号',
-  `peer_no` int(11) DEFAULT NULL COMMENT '关联站点号',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `index_station_peer` (`stationno`,`peer_no`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=260 DEFAULT CHARSET=utf8 COMMENT='站点关联表';
-
--- ----------------------------
--- Table structure for version
--- ----------------------------
-DROP TABLE IF EXISTS `version`;
-CREATE TABLE `version` (
-  `table_name` varchar(32) NOT NULL,
-  `table_version` int(10) unsigned NOT NULL DEFAULT '0',
-  `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  UNIQUE KEY `table_name_idx` (`table_name`) USING BTREE,
-  KEY `idx_update_time` (`update_time`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-SET FOREIGN_KEY_CHECKS = 1;
