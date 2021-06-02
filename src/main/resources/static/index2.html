@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>demo2</title>
+    <style type="text/css">
+        #connect-container {
+            float: left;
+            width: 400px
+        }
+
+        #connect-container div {
+            padding: 5px;
+        }
+
+        #console-container {
+            float: left;
+            margin-left: 15px;
+            width: 400px;
+        }
+
+        #console {
+            border: 1px solid #CCCCCC;
+            border-right-color: #999999;
+            border-bottom-color: #999999;
+            height: 380px;
+            width: 800px;
+            overflow-y: scroll;
+            padding: 5px;
+        }
+
+        #console p {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+    <script type="application/javascript">
+
+        var ws = null;
+
+        function init() {
+            var host = window.location.host;
+            var ip = host.split(":")[0];
+            var obj = document.getElementById('ws');
+            obj.value = "ws://" + ip + ":6868/ws";
+        }
+
+        function setConnected(connected) {
+            document.getElementById('connect').disabled = connected;
+            document.getElementById('disconnect').disabled = !connected;
+            document.getElementById('loginBut').disabled = !connected;
+            document.getElementById('callout').disabled = !connected;
+        }
+
+        function connect() {
+            var target = document.getElementById('ws').value;
+            if (target == '') {
+                alert('Please select server side connection implementation.');
+                return;
+            }
+            if ('WebSocket' in window) {
+                ws = new WebSocket(target);
+            } else if ('MozWebSocket' in window) {
+                ws = new MozWebSocket(target);
+            } else {
+                alert('WebSocket is not supported by this browser.');
+                return;
+            }
+            var timer;
+            ws.onopen = function () {
+                setConnected(true);
+                log('Info: WebSocket connection opened.');
+                timer = window.setInterval(function () {
+                    var ping = "{'cmd':'ping' , 'sequence': " + new Date().getTime() + " }";
+                    ws.send(ping);
+                }, 10 * 1000);
+            };
+            ws.onmessage = function (event) {
+                log('Received: ' + event.data);
+            };
+            ws.onclose = function (event) {
+                setConnected(false);
+                clearInterval(timer);
+                log('Info: WebSocket connection closed, Code: ' + event.code + (event.reason == "" ? "" : ", Reason: " + event.reason));
+            };
+        }
+
+        function disconnect() {
+            if (ws != null) {
+                ws.close();
+                ws = null;
+            }
+            setConnected(false);
+        }
+
+        function echo(message) {
+            if (ws != null) {
+                log('Sent: ' + message);
+                ws.send(message);
+            } else {
+                alert('WebSocket connection not established, please connect.');
+            }
+        }
+
+        function log(message) {
+            if (message.indexOf('pong') != -1) {
+                return;
+            }
+
+
+            var console = document.getElementById('console');
+            var p = document.createElement('p');
+            p.style.wordWrap = 'break-word';
+            p.appendChild(document.createTextNode(message));
+            console.appendChild(p);
+            while (console.childNodes.length > 30) {
+                console.removeChild(console.firstChild);
+            }
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            var console = document.getElementById('console');
+            while (console.childNodes.length > 0) {
+                console.removeChild(console.firstChild);
+            }
+        }
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Remove elements with "noscript" class - <noscript> is not allowed in XHTML
+            var noscripts = document.getElementsByClassName("noscript");
+            for (var i = 0; i < noscripts.length; i++) {
+                noscripts[i].parentNode.removeChild(noscripts[i]);
+            }
+        }, false);
+    </script>
+</head>
+<body onload="init()">
+<div class="noscript"><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websockets rely on
+    Javascript being enabled. Please enable
+    Javascript and reload this page!</h2></div>
+<div>
+    <div id="connect-container">
+
+        <div>
+            <input id="ws" value="ws://127.0.0.1:6800/ws" type="text" size="40" style="width: 350px"/>
+        </div>
+        <div>
+            <button id="connect" onclick="connect();">Connect</button>
+            <button id="disconnect" disabled="disabled" onclick="disconnect();">Disconnect</button>
+        </div>
+        <div>
+            <textarea id="loginText" style="width: 350px;height: 80px">{"cmd":"LOGIN","loginType":"1","workType":"1","agentKey":"1002@test","passwd":"8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92","time":"123456789"}</textarea>
+        </div>
+        <div>
+            <button id="loginBut" onclick="echo(document.getElementById('loginText').value);" disabled="disabled">登 录
+            </button>
+        </div>
+        </br>
+
+
+        <div>
+            <textarea id="READY_Text" style="width: 350px;height: 80px">{"cmd":"READY","sequence":1604584634704}</textarea>
+        </div>
+        <div>
+            <button id="READY" onclick="echo(document.getElementById('READY_Text').value);"> READY
+            </button>
+        </div>
+        </br>
+
+
+
+        <div>
+            <textarea id="NOT_READY_Text" style="width: 350px;height: 80px">{"cmd":"NOT_READY","sequence":1604584634704}</textarea>
+        </div>
+        <div>
+            <button id="NOT_READY" onclick="echo(document.getElementById('NOT_READY_Text').value);"> NOT_READY
+            </button>
+        </div>
+        </br>
+
+        <div>
+            <textarea id="calloutText" style="width: 350px;height: 80px">{ "cmd":"MAKE_CALL", "caller":"", "called":"18899998887", "callType":"OUTBOUNT_CALL", "followData":{"autoAnswer":"true"}, "sequence":1604584634704}</textarea>
+        </div>
+        <div>
+            <button id="callout" onclick="echo(document.getElementById('calloutText').value);"> 外呼
+            </button>
+        </div>
+        </br>
+
+        </br>
+    </div>
+    <div id="console-container">
+        <div id="console"/>
+    </div>
+
+    <div>
+        <button id="clearConsole" onclick="clearConsole();">clear message</button>
+    </div>
+</div>
+</body>
+</html>
