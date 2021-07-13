@@ -1,6 +1,5 @@
 package org.zhongweixian.cc.fs.handler;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.cti.cc.entity.RouteGetway;
 import org.cti.cc.entity.VdnPhone;
 import org.cti.cc.enums.CallType;
@@ -10,12 +9,13 @@ import org.springframework.stereotype.Component;
 import org.zhongweixian.cc.configration.HandlerType;
 import org.zhongweixian.cc.fs.event.FsAnswerEvent;
 import org.zhongweixian.cc.fs.handler.base.BaseEventHandler;
-import org.zhongweixian.esl.transport.event.EslEvent;
 
 import java.time.Instant;
 
 /**
- * Created by caoliang on 2020/8/31
+ * Created by caoliang on 2020/8/23
+ * <p>
+ * 设备应答处理类
  */
 @Component
 @HandlerType("CHANNEL_ANSWER")
@@ -52,22 +52,24 @@ public class FsAnswerHandler extends BaseEventHandler<FsAnswerEvent> {
                 break;
             case NEXT_TRANSFER_CALL:
                 /**
-                 * 转接电话
+                 * 转接电话 deviceInfo为被转接设备
                  */
                 String fromDeviceId = nextCommand.getNextValue();
-                deviceInfo.setNextCommand(new NextCommand(NextType.NEXT_TRANSFER_BRIDGE, callInfo.getDeviceList().get(1)));
+                // deviceInfo.setNextCommand(new NextCommand(NextType.NEXT_TRANSFER_BRIDGE, callInfo.getDeviceList().get(1)));
                 DeviceInfo fromDevice = callInfo.getDeviceInfoMap().get(fromDeviceId);
                 fromDevice.setNextCommand(new NextCommand(NextType.NEXT_TRANSFER_SUCCESS, event.getDeviceId() + ":" + callInfo.getDeviceList().get(1)));
                 logger.info("转接电话中 callId:{} from:{} to:{} ", callInfo.getCallId(), fromDeviceId, event.getDeviceId());
                 try {
-                    EslEvent eslEvent = fsListen.transferCall(callInfo.getMedia(), callInfo.getDeviceList().get(1), event.getDeviceId());
+                    transferCall(callInfo.getMedia(), callInfo.getDeviceList().get(1), event.getDeviceId());
                 } catch (Exception e) {
                     logger.error(e.getMessage(), e);
                 }
+                //挂掉原有的电话
+                hangupCall(callInfo.getMedia(), callInfo.getCallId(), fromDeviceId);
                 break;
             case NEXT_CALL_BRIDGE:
                 logger.info("开始桥接电话: callId:{} caller:{} called:{} device1:{}, device2:{}", callInfo.getCallId(), callInfo.getCaller(), callInfo.getCalled(), nextCommand.getNextValue(), event.getDeviceId());
-                bridgeCall(event.getHostname(), nextCommand.getNextValue(), event.getDeviceId());
+                callBridge(event.getHostname(), nextCommand.getNextValue(), event.getDeviceId());
                 break;
             default:
                 logger.warn("can not match :{}, callId:{}", nextCommand.getNextType(), callInfo.getCallId());
@@ -83,7 +85,7 @@ public class FsAnswerHandler extends BaseEventHandler<FsAnswerEvent> {
      * @param deviceInfo
      */
     private void callOther(CallInfo callInfo, DeviceInfo deviceInfo) {
-        String deviceId = RandomStringUtils.randomNumeric(16);
+        String deviceId = getDeviceId();
         logger.info("呼另外一侧电话: callId:{}  display:{}  called:{}  deviceId:{} ", callInfo.getCallId(), callInfo.getCalledDisplay(), callInfo.getCalled(), deviceId);
         callInfo.getDeviceList().add(deviceId);
         String called = callInfo.getCalled();
@@ -101,7 +103,7 @@ public class FsAnswerHandler extends BaseEventHandler<FsAnswerEvent> {
             hangupCall(callInfo.getMedia(), callInfo.getCallId(), deviceInfo.getDeviceId());
             return;
         }
-        fsListen.makeCall(routeGetway, callInfo.getCalledDisplay(), called , deviceId);
+        fsListen.makeCall(routeGetway, callInfo.getCalledDisplay(), called, deviceId);
         DeviceInfo deviceInfo1 = new DeviceInfo();
         //1:坐席,2:客户,3:外线
         deviceInfo1.setDeviceType(callInfo.getCallType() == CallType.INNER_CALL ? 1 : 2);
@@ -109,6 +111,7 @@ public class FsAnswerHandler extends BaseEventHandler<FsAnswerEvent> {
         deviceInfo1.setCdrType(callInfo.getCallType() == CallType.INNER_CALL ? 3 : 2);
         deviceInfo1.setCallId(callInfo.getCallId());
         deviceInfo1.setCalled(called);
+        deviceInfo1.setDisplay(called);
         deviceInfo1.setCaller(callInfo.getCalledDisplay());
         deviceInfo1.setDeviceId(deviceId);
         deviceInfo1.setCallTime(Instant.now().toEpochMilli());
@@ -134,7 +137,7 @@ public class FsAnswerHandler extends BaseEventHandler<FsAnswerEvent> {
      * @param deviceInfo
      */
     private void matchVdnCode(FsAnswerEvent event, CallInfo callInfo, DeviceInfo deviceInfo) {
-        VdnPhone vdnPhone = cacheService.getVdnPhone(callInfo.getCalledDisplay());
+        VdnPhone vdnPhone = cacheService.getVdnPhone(callInfo.getCalled());
         logger.info("inbount caller:{} called:{} for vdnId:{}", event.getCaller(), event.getCalled(), vdnPhone.getVdnId());
         CompanyInfo companyInfo = cacheService.getCompany(vdnPhone.getCompanyId());
         if (companyInfo == null || companyInfo.getStatus() == 0) {

@@ -1,17 +1,14 @@
 package org.zhongweixian.cc.command;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.cti.cc.entity.CallDetail;
 import org.cti.cc.enums.NextType;
 import org.cti.cc.po.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.zhongweixian.cc.cache.CacheService;
+import org.zhongweixian.cc.command.base.BaseHandler;
 import org.zhongweixian.cc.fs.FsListen;
 import org.zhongweixian.cc.service.AgentService;
 
@@ -22,15 +19,21 @@ import java.util.PriorityQueue;
 import java.util.concurrent.*;
 
 /**
- * Create by caoliang on 2020/12/3
+ * Create by caoliang on 2020/8/23
  * <p>
  * 进技能组
  */
 @Component
 public class GroupHandler extends BaseHandler {
 
+    /**
+     * 排队电话
+     */
     private Map<Long, PriorityQueue<CallQueue>> callInfoMap = new ConcurrentHashMap<>();
 
+    /**
+     * 空闲坐席
+     */
     private Map<Long, PriorityQueue<AgentQueue>> agentInfoMap = new ConcurrentHashMap<>();
 
 
@@ -52,14 +55,14 @@ public class GroupHandler extends BaseHandler {
     /**
      * 转接坐席线程
      */
-    private ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(4, 4, 0L,
+    private ThreadPoolExecutor wakeupCallService = new ThreadPoolExecutor(4, 4, 0L,
             TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new ThreadFactoryBuilder().setNameFormat("wakeup-call-pool-%d").build());
 
 
     /**
      * 检测电话排队定时线程
      */
-    private ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1, new ThreadFactoryBuilder().setNameFormat("check-call-pool-%d").build());
+    private ScheduledExecutorService checkCallService = new ScheduledThreadPoolExecutor(1, new ThreadFactoryBuilder().setNameFormat("check-call-pool-%d").build());
 
 
     /**
@@ -87,6 +90,7 @@ public class GroupHandler extends BaseHandler {
         Long groupId = callInfo.getGroupId();
         AgentInfo agentInfo = getAgentQueue(groupId);
         if (agentInfo != null) {
+            logger.info("callId:{} get free agent:{} on group:{}", callInfo.getCallId(), agentInfo.getAgentKey(), groupId);
             //呼叫坐席
             callInfo.setQueueEndTime(Instant.now().toEpochMilli());
             agentNotReady(agentInfo);
@@ -207,7 +211,7 @@ public class GroupHandler extends BaseHandler {
                 return;
             }
             logger.info("agent:{} not ready for group:{}", agentInfo.getAgentKey(), groupId);
-            agentQueues.remove(agentInfo.getAgentKey());
+            agentQueues.remove(new AgentQueue(1L, agentInfo.getAgentKey()));
             agentInfoMap.put(groupId, agentQueues);
         });
     }
@@ -254,6 +258,7 @@ public class GroupHandler extends BaseHandler {
         CallInfo callInfo = cacheService.getCallInfo(callQueue.getCallId());
         DeviceInfo deviceInfo = callInfo.getDeviceInfoMap().get(callQueue.deviceId);
         GroupOverflowPo groupOverflowPo = callQueue.getGroupOverflowPo();
+        logger.info("callId:{} queueTimeoout, busyTimeoutType:{}", callQueue.getCallId(), groupOverflowPo.getBusyTimeoutType());
         switch (groupOverflowPo.getBusyTimeoutType()) {
             case 1:
                 //排队超时走溢出策略,1:group,2:ivr,3:vdn
@@ -271,17 +276,22 @@ public class GroupHandler extends BaseHandler {
                 break;
             case 2:
                 //挂机
-                deviceInfo.setNextCommand(new NextCommand(NextType.NEXT_QUEUE_OVERFLOW_HANGUP, groupOverflowPo.getOverflowValue().toString()));
+                deviceInfo.setNextCommand(new NextCommand(NextType.NEXT_HANGUP, groupOverflowPo.getOverflowValue().toString()));
+                break;
+
+            default:
+                logger.warn("============:{}", callQueue);
                 break;
         }
         fsListen.playbreak(callInfo.getMedia(), callQueue.getDeviceId());
+        doNextCommand(callInfo, deviceInfo);
     }
 
     /**
      * 进入到队列的电话，需要定时找空闲坐席
      */
     public void start() {
-        scheduledExecutorService.scheduleAtFixedRate(() -> {
+        checkCallService.scheduleAtFixedRate(() -> {
             Long now = Instant.now().getEpochSecond();
             callInfoMap.forEach((k, v) -> {
                 if (!v.isEmpty()) {
@@ -312,12 +322,12 @@ public class GroupHandler extends BaseHandler {
                     }
                 }
             });
-
         }, 5000, 200, TimeUnit.MILLISECONDS);
     }
 
     public void stop() {
-        scheduledExecutorService.shutdown();
+        checkCallService.shutdown();
+        wakeupCallService.shutdown();
     }
 
 
@@ -354,7 +364,8 @@ public class GroupHandler extends BaseHandler {
 
         @Override
         public boolean equals(Object obj) {
-            return this.agentKey.equals(obj);
+            AgentQueue agentQueue = (AgentQueue) obj;
+            return this.agentKey.equals(agentQueue.getAgentKey());
         }
     }
 

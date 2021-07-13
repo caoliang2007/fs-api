@@ -12,6 +12,7 @@ import org.cti.cc.po.CompanyInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 import org.zhongweixian.cc.configration.HandlerType;
 import org.zhongweixian.cc.service.AgentService;
 import org.zhongweixian.cc.util.BcryptUtil;
@@ -68,6 +69,8 @@ public class WsLoginHandler extends WsBaseHandler<WsLoginEvnet> {
             event.getChannel().close();
             return;
         }
+        agentInfo.setLoginType(event.getLoginType());
+        agentInfo.setWorkType(event.getWorkType());
 
         //通话中不允许挤掉老的连接
         AgentState state = agentInfo.getAgentState();
@@ -100,11 +103,6 @@ public class WsLoginHandler extends WsBaseHandler<WsLoginEvnet> {
                 }
             }
         }
-        if (StringUtils.isBlank(agentInfo.getPasswd())) {
-            Agent agent = agentService.getAgentDb(event.getAgentKey());
-            agentInfo.setPasswd(agent.getPasswd());
-            agentInfo.setStatus(agent.getStatus());
-        }
         if (!BcryptUtil.checkPwd(event.getPasswd(), agentInfo.getPasswd())) {
             logger.error("agent:{}  password {} is error", event.getAgentKey(), event.getPasswd());
             sendMessgae(event, new WsResponseEntity<>(ErrorCode.ACCOUNT_ERROR, event.getCmd(), event.getAgentKey()));
@@ -125,7 +123,34 @@ public class WsLoginHandler extends WsBaseHandler<WsLoginEvnet> {
             event.getChannel().close();
             return;
         }
-
+        //判断坐席登录方式
+        if (agentInfo.getLoginType() == null) {
+            sendMessgae(event, new WsResponseEntity<>(ErrorCode.PARAMETER_ERROR, event.getCmd(), event.getAgentKey(), "loginType"));
+            event.getChannel().close();
+            return;
+        }
+        switch (agentInfo.getLoginType()) {
+            case 1:
+            case 2:
+                //sip号码不能为空
+                if (CollectionUtils.isEmpty(agentInfo.getSips())) {
+                    sendMessgae(event, new WsResponseEntity<>(ErrorCode.ACCOUNT_SIP_NOTNUL, event.getCmd(), event.getAgentKey()));
+                    event.getChannel().close();
+                    return;
+                }
+                break;
+            case 3:
+                //手机号不能为空
+                if (StringUtils.isBlank(agentInfo.getSipPhone())) {
+                    sendMessgae(event, new WsResponseEntity<>(ErrorCode.ACCOUNT_PHONE_NOTNULL, event.getCmd(), event.getAgentKey()));
+                    event.getChannel().close();
+                    return;
+                }
+                break;
+            default:
+                logger.warn("agent:{} loginType:{} not support", event.getAgentKey(), event.getLoginType());
+                return;
+        }
         agentLogin(agentInfo, event);
     }
 
@@ -185,7 +210,6 @@ public class WsLoginHandler extends WsBaseHandler<WsLoginEvnet> {
         response.setSipPhone(agentInfo.getSipPhone());
         response.setHost(agentInfo.getHost());
         agentInfo.setLogoutTime(0L);
-
 
         /**
          * 发送给前端

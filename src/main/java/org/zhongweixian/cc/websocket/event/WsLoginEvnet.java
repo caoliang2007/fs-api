@@ -27,7 +27,7 @@ public class WsLoginEvnet extends WsBaseEvent {
     private Integer loginType;
 
     /**
-     *
+     * 预测、手动
      */
     private Integer workType;
 

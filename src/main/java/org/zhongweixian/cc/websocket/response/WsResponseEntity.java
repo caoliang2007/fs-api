@@ -30,9 +30,12 @@ public class WsResponseEntity<T> {
         this.agentKey = agentKey;
     }
 
-    public WsResponseEntity(ErrorCode errorCode, String type, String agentKey) {
+    public WsResponseEntity(ErrorCode errorCode, String type, String agentKey, String... args) {
         this.code = errorCode.getCode();
         this.message = errorCode.getMessage();
+        if (args != null && args.length > 0) {
+            message = String.format(message, args);
+        }
         this.type = type;
         this.agentKey = agentKey;
     }

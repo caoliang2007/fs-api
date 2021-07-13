@@ -1,8 +1,6 @@
 package org.zhongweixian.cc.command;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.cti.cc.entity.CallDetail;
-import org.cti.cc.entity.RouteCall;
 import org.cti.cc.entity.RouteGetway;
 import org.cti.cc.enums.CallType;
 import org.cti.cc.enums.NextType;
@@ -10,6 +8,7 @@ import org.cti.cc.po.CallInfo;
 import org.cti.cc.po.DeviceInfo;
 import org.cti.cc.po.NextCommand;
 import org.springframework.stereotype.Component;
+import org.zhongweixian.cc.command.base.BaseHandler;
 
 import java.time.Instant;
 
@@ -37,7 +36,7 @@ public class TransferCallHandler extends BaseHandler {
         callInfo.setCalled(called);
         callInfo.setCallType(CallType.TRANSFER_OUT_CALL);
 
-        String deviceId = RandomStringUtils.randomNumeric(16);
+        String deviceId = getDeviceId();
         RouteGetway routeGetway = cacheService.getRouteGetway(callInfo.getCompanyId(), callInfo.getCalled());
         if (routeGetway == null) {
             logger.warn("callId:{} origin error, called:{}", callInfo.getCallId(), callInfo.getCalled());

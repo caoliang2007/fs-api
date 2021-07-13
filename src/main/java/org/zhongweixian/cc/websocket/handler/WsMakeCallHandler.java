@@ -1,7 +1,6 @@
 package org.zhongweixian.cc.websocket.handler;
 
 import com.alibaba.fastjson.JSONObject;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cti.cc.entity.RouteGetway;
 import org.cti.cc.enums.Direction;
@@ -29,8 +28,6 @@ public class WsMakeCallHandler extends WsBaseHandler<WsMakeCallEvent> {
 
     @Override
     public void handleEvent(WsMakeCallEvent event) {
-        logger.info("{}", event.toString());
-
         /**
          * 呼叫类型没有匹配上
          */
@@ -47,6 +44,9 @@ public class WsMakeCallHandler extends WsBaseHandler<WsMakeCallEvent> {
             }
         }
         AgentInfo agentInfo = getAgent(event);
+        if (agentInfo.getAgentState().name().contains("CALL") || agentInfo.getAgentState() == AgentState.TALKING) {
+
+        }
 
         /**
          * 1 sip
@@ -168,7 +168,7 @@ public class WsMakeCallHandler extends WsBaseHandler<WsMakeCallEvent> {
      * @param event
      */
     private void innerCall(AgentInfo agentInfo, CallInfo callInfo, String callerDisplay, String caller, WsMakeCallEvent event) {
-        String deviceId = RandomStringUtils.randomNumeric(16);
+        String deviceId = getDeviceId();
         DeviceInfo deviceInfo = new DeviceInfo();
         deviceInfo.setCaller(agentInfo.getAgentId());
         deviceInfo.setDisplay(callerDisplay);
@@ -184,6 +184,7 @@ public class WsMakeCallHandler extends WsBaseHandler<WsMakeCallEvent> {
 
         callInfo.getDeviceList().add(deviceId);
         callInfo.getDeviceInfoMap().put(deviceId, deviceInfo);
+        callInfo.setHiddenCustomer(0);
         cacheService.addCallInfo(callInfo);
         cacheService.addDevice(deviceId, callInfo.getCallId());
 
@@ -239,7 +240,7 @@ public class WsMakeCallHandler extends WsBaseHandler<WsMakeCallEvent> {
      * @param event
      */
     private void outboundCall(AgentInfo agentInfo, CallInfo callInfo, String callerDisplay, String caller, WsMakeCallEvent event) {
-        String deviceId = RandomStringUtils.randomNumeric(16);
+        String deviceId = getDeviceId();
         DeviceInfo deviceInfo = new DeviceInfo();
         deviceInfo.setCaller(agentInfo.getAgentId());
         deviceInfo.setDisplay(callerDisplay);
@@ -268,7 +269,7 @@ public class WsMakeCallHandler extends WsBaseHandler<WsMakeCallEvent> {
 
         RouteGetway routeGetway = cacheService.getRouteGetway(callInfo.getCompanyId(), caller);
         if (routeGetway == null) {
-            logger.warn("make call:{} origin route error", callInfo.getCallId());
+            logger.error("agent:{} make call:{} origin route error", agentInfo.getAgentKey(), callInfo.getCallId());
             agentInfo.setBeforeTime(agentInfo.getStateTime());
             agentInfo.setBeforeState(agentInfo.getAgentState());
             agentInfo.setStateTime(Instant.now().toEpochMilli());

@@ -1,8 +1,8 @@
 package org.zhongweixian.cc.websocket.handler;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cti.cc.entity.RouteGetway;
+import org.cti.cc.enums.Direction;
 import org.cti.cc.enums.ErrorCode;
 import org.cti.cc.enums.NextType;
 import org.cti.cc.po.*;
@@ -16,6 +16,8 @@ import java.time.Instant;
 
 /**
  * Created by caoliang on 2020/11/6
+ * <p>
+ * 坐席发起转接  1:坐席,2:技能组,3:ivr,4:外线
  */
 @Component
 @HandlerType("WS_TRANSFER")
@@ -35,6 +37,9 @@ public class WsTransferHandler extends WsBaseHandler<WsTransferEvent> {
         CallInfo callInfo = cacheService.getCallInfo(callId);
 
         logger.info("callId:{} transfer type:{} , value:{}", callId, event.getTransferType(), event.getTransferValue());
+        /**
+         * 1:坐席,2:技能组,3:ivr,4:外线
+         */
         switch (event.getTransferType()) {
             case 1:
                 transferAgent(callInfo, agentInfo, event);
@@ -68,7 +73,7 @@ public class WsTransferHandler extends WsBaseHandler<WsTransferEvent> {
         }
         AgentInfo transferAgent = cacheService.getAgentInfo(event.getTransferValue());
         if (transferAgent == null || transferAgent.getLogoutTime() > 0L) {
-            logger.info("转接坐席不在线:{}", event.getTransferValue());
+            logger.warn("转接坐席不在线:{}", event.getTransferValue());
             return;
         }
         //坐席不在READY、NOT_READY
@@ -77,9 +82,10 @@ public class WsTransferHandler extends WsBaseHandler<WsTransferEvent> {
             return;
         }
 
-        String deviceId = RandomStringUtils.randomNumeric(16);
+        String deviceId = getDeviceId();
         DeviceInfo deviceInfo = new DeviceInfo();
-        deviceInfo.setCaller(agentInfo.getAgentId());
+        //如果是呼入，则caller,如果是外呼，则called
+        deviceInfo.setCaller(callInfo.getDirection() == Direction.INBOUND ? callInfo.getCaller() : callInfo.getCalled());
         deviceInfo.setDisplay(agentInfo.getAgentId());
         deviceInfo.setCalled(transferAgent.getCalled());
         deviceInfo.setCallTime(Instant.now().toEpochMilli());
@@ -87,7 +93,7 @@ public class WsTransferHandler extends WsBaseHandler<WsTransferEvent> {
         deviceInfo.setDeviceId(deviceId);
         deviceInfo.setCdrType(4);
         deviceInfo.setDeviceType(1);
-        deviceInfo.setAgentKey(agentInfo.getAgentKey());
+        deviceInfo.setAgentKey(transferAgent.getAgentKey());
         //传入客户侧id
         deviceInfo.setNextCommand(new NextCommand(NextType.NEXT_TRANSFER_CALL, agentInfo.getDeviceId()));
 

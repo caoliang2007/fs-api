@@ -7,7 +7,7 @@ import org.zhongweixian.cc.websocket.event.base.WsBaseEvent;
  * <p>
  * 挂机
  */
-public class WsStopCallEvent extends WsBaseEvent {
+public class WsHangupCallEvent extends WsBaseEvent {
 
 
 }

@@ -5,6 +5,7 @@ import org.cti.cc.entity.Playback;
 import org.cti.cc.enums.NextType;
 import org.cti.cc.po.*;
 import org.springframework.stereotype.Component;
+import org.zhongweixian.cc.command.base.BaseHandler;
 
 import java.time.Instant;
 
@@ -84,6 +85,7 @@ public class VdnHandler extends BaseHandler {
                             break;
                     }
                     playback(callInfo.getMedia(), deviceId, playback.getPlayback());
+                    doNextCommand(callInfo, deviceInfo);
                     return;
                 }
 
@@ -98,7 +100,7 @@ public class VdnHandler extends BaseHandler {
                  * 转IVR
                  */
                 transferIvrHandler.handler(callInfo, deviceInfo, Long.parseLong(vdnSchedulePo.getRouteValue()));
-                break;
+                return;
 
             case 4:
                 /**
@@ -110,14 +112,14 @@ public class VdnHandler extends BaseHandler {
                     return;
                 }
                 transferAgentHandler.hanlder(callInfo, agentInfo, deviceId);
-                break;
+                return;
 
             case 5:
                 /**
                  * 转外呼
                  */
                 transferCallHandler.hanlder(callInfo, vdnSchedulePo.getRouteValue(), deviceId);
-                break;
+                return;
             default:
                 logger.warn("vdnCode not match callId:{} , case:{}", callInfo.getCallId(), vdnSchedulePo.getRouteType());
                 break;

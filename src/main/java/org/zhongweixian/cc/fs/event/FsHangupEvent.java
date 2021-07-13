@@ -43,8 +43,8 @@ public class FsHangupEvent extends FsBaseEvent {
     /**
      * sip呼叫地址
      */
-    @JSONField(name = "variable_sip_req_uri")
-    private String sipToUri;
+    @JSONField(name = "variable_channel_name")
+    private String channelName;
 
     /**
      * sip状态
@@ -94,12 +94,14 @@ public class FsHangupEvent extends FsBaseEvent {
         this.sipProtocol = sipProtocol;
     }
 
-    public String getSipToUri() {
-        return sipToUri;
+    @Override
+    public String getChannelName() {
+        return channelName;
     }
 
-    public void setSipToUri(String sipToUri) {
-        this.sipToUri = sipToUri;
+    @Override
+    public void setChannelName(String channelName) {
+        this.channelName = channelName;
     }
 
     public String getSipStatus() {
@@ -116,7 +118,7 @@ public class FsHangupEvent extends FsBaseEvent {
                 "hangupCause='" + hangupCause + '\'' +
                 ", answerState='" + answerState + '\'' +
                 ", sipProtocol='" + sipProtocol + '\'' +
-                ", sipToUri='" + sipToUri + '\'' +
+                ", channelName='" + channelName + '\'' +
                 ", sipStatus='" + sipStatus + '\'' +
                 ", caller='" + caller + '\'' +
                 ", eventName='" + eventName + '\'' +

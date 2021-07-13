@@ -64,6 +64,11 @@ public enum EventType {
      */
     DTMF(1012, FsDtmfEvent.class),
 
+    /**
+     * 媒体识别回铃音
+     */
+    RING_ASR(1013, FsRingAsrEvent.class),
+
 
     /***************************************************/
 
@@ -120,7 +125,7 @@ public enum EventType {
     /**
      * 挂机
      */
-    WS_STOP_CALL(2011, WsStopCallEvent.class),
+    WS_HANGUP_CALL(2011, WsHangupCallEvent.class),
 
     /**
      * 通话中更新随路数据

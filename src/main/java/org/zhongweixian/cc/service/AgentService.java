@@ -17,13 +17,6 @@ public interface AgentService extends BaseService<Agent> {
     AgentInfo getAgentInfo(String agentKey);
 
     /**
-     *
-     * @param agentKey
-     * @return
-     */
-    Agent getAgentDb(String agentKey);
-
-    /**
      * @param agentId
      * @return
      */

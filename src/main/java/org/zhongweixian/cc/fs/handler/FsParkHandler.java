@@ -20,9 +20,9 @@ import org.zhongweixian.cc.websocket.response.WsResponseEntity;
 import java.time.Instant;
 
 /**
- * Created by caoliang on 2020/10/16
+ * Created by caoliang on 2020/8/23
  * <p>
- * 话机振铃
+ * 设备话机振铃
  */
 @Component
 @HandlerType("CHANNEL_PARK")
@@ -142,9 +142,10 @@ public class FsParkHandler extends BaseEventHandler<FsParkEvent> {
                 .withDirection(Direction.INBOUND)
                 .withCallTime(Instant.now().toEpochMilli())
                 .withCaller(event.getCaller())
-                .withCalledDisplay(event.getCalled())
+                .withCalled(event.getCalled())
                 .withCompanyId(vdnPhone.getCompanyId())
                 .withAnswerCount(1)
+                .withMedia(event.getHostname())
                 .build();
 
         DeviceInfo deviceInfo = DeviceInfo.DeviceInfoBuilder.builder()

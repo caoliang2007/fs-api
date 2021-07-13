@@ -29,7 +29,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by caoliang on 2020/8/31
+ * Created by caoliang on 2020/8/23
+ * <p>
+ * 设备挂断处理类
  */
 @Component
 @HandlerType("CHANNEL_HANGUP")
@@ -38,23 +40,23 @@ public class FsHangupHandler extends BaseEventHandler<FsHangupEvent> {
 
     private RestTemplate restTemplate;
 
-
-    public FsHangupHandler(@Value("${cdr.notify.timeout:5}") Integer timeout) {
+    public FsHangupHandler(@Value("${cdr.notify.timeout:100}") Integer connectTimeout, @Value("${cdr.notify.timeout:1000}") Integer readTimeout) {
         SimpleClientHttpRequestFactory simpleClientHttpRequestFactory = new SimpleClientHttpRequestFactory();
-        simpleClientHttpRequestFactory.setConnectTimeout(500);
-        simpleClientHttpRequestFactory.setReadTimeout(timeout * 1000);
+        simpleClientHttpRequestFactory.setConnectTimeout(connectTimeout);
+        simpleClientHttpRequestFactory.setReadTimeout(readTimeout);
         restTemplate = new RestTemplate(simpleClientHttpRequestFactory);
     }
 
     @Override
     public void handleEvent(FsHangupEvent event) {
+        logger.info("======= {}, {}", event.getSipStatus(), event.getSipProtocol());
         CallInfo callInfo = cacheService.getCallInfo(event.getDeviceId());
         if (callInfo == null) {
             return;
         }
         Integer count = callInfo.getDeviceList().size();
         String cause = event.getHangupCause();
-        logger.info("callId:{} called:{} hangup sipStatus:{} hangupCause:{}", callInfo.getCallId(), event.getSipToUri(), event.getSipStatus(), event.getHangupCause());
+        logger.info("callId:{} called:{} hangup sipStatus:{} hangupCause:{}", callInfo.getCallId(), event.getChannelName(), event.getSipStatus(), event.getHangupCause());
 
         /**
          * 挂机原因
@@ -67,7 +69,7 @@ public class FsHangupHandler extends BaseEventHandler<FsHangupEvent> {
         deviceInfo.setHangupCause(event.getHangupCause());
         deviceInfo.setSipProtocol(event.getSipProtocol());
         deviceInfo.setSipStatus(event.getSipStatus());
-        deviceInfo.setSipToUri(event.getSipToUri());
+        deviceInfo.setChannelName(event.getChannelName());
         deviceInfo.setEndTime(event.getTimestamp() / 1000);
         if (deviceInfo.getAnswerTime() != null) {
             deviceInfo.setTalkTime(deviceInfo.getEndTime() - deviceInfo.getAnswerTime());
@@ -176,7 +178,7 @@ public class FsHangupHandler extends BaseEventHandler<FsHangupEvent> {
         if (StringUtils.isNoneBlank(callInfo.getCdrNotifyUrl())) {
             //话单推送
             CallLogPo callLogPo = new CallLogPo();
-            BeanUtils.copyProperties(callInfo, callLogPo);
+            BeanUtils.copyProperties(callLog, callLogPo);
             List<CallDevice> callDeviceList = new ArrayList<>();
 
             callInfo.getDeviceInfoMap().forEach((k, v) -> {
@@ -185,14 +187,18 @@ public class FsHangupHandler extends BaseEventHandler<FsHangupEvent> {
                 callDeviceList.add(callDevice);
             });
             callLogPo.setCallDeviceList(callDeviceList);
+            callLogPo.setCaller(callInfo.getCaller());
+            callLogPo.setCalled(callInfo.getCalled());
+            ResponseEntity<String> responseEntity = null;
             try {
-                ResponseEntity<String> responseEntity = restTemplate.postForEntity(callInfo.getCdrNotifyUrl(), JSON.toJSONString(callLogPo), String.class);
-                logger.info("push callLog:{} success:{}", callInfo.getCallId(), responseEntity.getBody());
+                logger.info("send push data:{}", JSON.toJSONString(callLogPo));
+                responseEntity = restTemplate.postForEntity(callInfo.getCdrNotifyUrl(), JSON.toJSONString(callLogPo), String.class);
+                logger.info("push call:{} to {} success:{}", callInfo.getCallId(), callInfo.getCdrNotifyUrl(), responseEntity.getBody());
                 return;
             } catch (Exception e) {
 
             }
-            logger.warn("send callcdr:{} error", callInfo.getCallId());
+            logger.warn("push call:{} to {} error", callInfo.getCallId(), callInfo.getCdrNotifyUrl());
             PushFailLog pushFailLog = new PushFailLog();
             pushFailLog.setCallId(callLogPo.getCallId());
             pushFailLog.setCts(Instant.now().getEpochSecond());
@@ -323,11 +329,7 @@ public class FsHangupHandler extends BaseEventHandler<FsHangupEvent> {
                     if (values == null || values.length != 2) {
                         return;
                     }
-                    fsListen.sendArgs(callInfo.getMedia(), values[0], "park_after_bridge", "true");
-                    fsListen.sendArgs(callInfo.getMedia(), values[0], "hangup_after_bridge", "false");
-                    fsListen.sendArgs(callInfo.getMedia(), values[1], "hangup_after_bridge", "false");
-                    fsListen.sendArgs(callInfo.getMedia(), values[1], "park_after_bridge", "true");
-                    this.bridgeCall(callInfo.getMedia(), values[0], values[1]);
+                    callBridge(callInfo.getMedia(), values[0], values[1]);
                     break;
 
                 case NEXT_TRANSFER_BRIDGE:

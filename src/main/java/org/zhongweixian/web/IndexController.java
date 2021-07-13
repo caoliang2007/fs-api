@@ -51,7 +51,6 @@ public class IndexController {
     private JdbcTemplate jdbcTemplate;
 
 
-
     /**
      * 模拟手动外呼
      *
@@ -64,7 +63,7 @@ public class IndexController {
         //先呼坐席sip号
         Long callId = snowflakeIdWorker.nextId();
         String device = RandomStringUtils.randomNumeric(16);
-        fsListen.makeCall("",display, caller + "@115.159.101.178:8880", device);
+        fsListen.makeCall("", display, caller + "@115.159.101.178:8880", device);
 
         Long now = Instant.now().toEpochMilli();
         CallInfo callInfo = new CallInfo();
@@ -130,5 +129,5 @@ public class IndexController {
     public CommonResponse decrypt(@RequestParam String text) {
         return new CommonResponse(encrypt.decrypt(text));
     }
- }
+}
 

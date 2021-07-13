@@ -7,7 +7,7 @@ import org.cti.cc.po.AgentState;
 import org.cti.cc.po.CallInfo;
 import org.springframework.stereotype.Component;
 import org.zhongweixian.cc.configration.HandlerType;
-import org.zhongweixian.cc.websocket.event.WsStopCallEvent;
+import org.zhongweixian.cc.websocket.event.WsHangupCallEvent;
 import org.zhongweixian.cc.websocket.handler.base.WsBaseHandler;
 import org.zhongweixian.cc.websocket.response.WsResponseEntity;
 
@@ -15,10 +15,10 @@ import org.zhongweixian.cc.websocket.response.WsResponseEntity;
  * Created by caoliang on 2020/11/6
  */
 @Component
-@HandlerType("WS_STOP_CALL")
-public class WsStopCallHandler extends WsBaseHandler<WsStopCallEvent> {
+@HandlerType("WS_HANGUP_CALL")
+public class WsStopCallHandler extends WsBaseHandler<WsHangupCallEvent> {
     @Override
-    public void handleEvent(WsStopCallEvent event) {
+    public void handleEvent(WsHangupCallEvent event) {
         logger.info("{}", event.toString());
         AgentInfo agentInfo = getAgent(event);
         CallInfo callInfo = cacheService.getCallInfo(agentInfo.getCallId());
@@ -31,6 +31,6 @@ public class WsStopCallHandler extends WsBaseHandler<WsStopCallEvent> {
             return;
         }
         logger.info("坐席发起挂机 agent:{} callId:{}", event.getAgentKey(), callInfo.getCallId());
-        stopCall(callInfo.getMedia(), agentInfo.getDeviceId());
+        hangupCall(callInfo.getMedia(), callInfo.getCallId(), agentInfo.getDeviceId());
     }
 }

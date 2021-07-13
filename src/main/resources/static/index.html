@@ -69,11 +69,12 @@
             var timer;
             ws.onopen = function () {
                 log('Info: WebSocket connection opened.');
+                var pingTime = 10 * 1000;
                 setConnected(true);
                 timer = window.setInterval(function () {
                     var ping = "{'cmd':'ping' , 'sequence': " + new Date().getTime() + " }";
                     ws.send(ping);
-                }, 10 * 1000);
+                }, pingTime);
             };
             ws.onmessage = function (event) {
                 log('Received: ' + event.data);
@@ -213,10 +214,10 @@
         </br>
 
         <div>
-            <textarea id="stopCallText" style="width: 350px;height: 30px">{ "cmd":"STOP_CALL", "callId":"", "sequence":1604584634704}</textarea>
+            <textarea id="hangupCallText" style="width: 350px;height: 30px">{ "cmd":"HANGUP_CALL", "callId":"", "sequence":1604584634704}</textarea>
         </div>
         <div>
-            <button id="stopCall" onclick="echo(document.getElementById('stopCallText').value);"> 挂机</button>
+            <button id="hangupCall" onclick="echo(document.getElementById('hangupCallText').value);"> 挂机</button>
         </div>
         </br>
 

@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang3.StringUtils;
+import org.cti.cc.constant.FsConstant;
 import org.cti.cc.entity.RouteGetway;
 import org.cti.cc.po.CallInfo;
 import org.slf4j.Logger;
@@ -57,7 +58,8 @@ public class FsListen {
 
     private static final String SPLIT = ",";
 
-    private ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1, new ThreadFactoryBuilder().setNameFormat("check-freeswitch-pool-%d").build());
+
+    private ScheduledExecutorService checkFsThread = new ScheduledThreadPoolExecutor(1, new ThreadFactoryBuilder().setNameFormat("check-freeswitch-pool-%d").build());
 
     /**
      * 媒体集合
@@ -70,12 +72,17 @@ public class FsListen {
     private Map<Integer, ThreadPoolExecutor> executorMap = new ConcurrentHashMap<>();
 
     /**
+     * 多线程发送消息
+     */
+    private ThreadPoolExecutor sendThread = new ThreadPoolExecutor(8, 8, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new ThreadFactoryBuilder().setNameFormat("freeswitch-send-%d").build());
+
+    /**
      * 总线程数
      */
     private Integer threadNum;
 
 
-    public FsListen(@Value("${fs.thread.num:32}") Integer threadNum) {
+    public FsListen(@Value("${fs.thread.num:16}") Integer threadNum) {
         this.threadNum = threadNum;
         for (int i = 0; i < threadNum; i++) {
             ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("fs-pool-" + i).build();
@@ -98,9 +105,9 @@ public class FsListen {
         for (int i = 0; i < fsHosts.size(); i++) {
             connect(i, fsHosts.get(i), fsPorts.get(i), fsPasswords.get(i));
         }
-        scheduledExecutorService.scheduleAtFixedRate(() -> {
+        checkFsThread.scheduleAtFixedRate(() -> {
             checkConnect();
-        }, 1, 1, TimeUnit.MINUTES);
+        }, 10, 10, TimeUnit.SECONDS);
     }
 
     /**
@@ -126,94 +133,97 @@ public class FsListen {
                 String eventName = event.getEventName();
 
                 switch (event.getEventName()) {
-                    case "RE_SCHEDULE":
+                    case FsConstant.RE_SCHEDULE:
                         return;
-                    case "API":
+                    case FsConstant.API:
                         return;
-                    case "HEARTBEAT":
+                    case FsConstant.HEARTBEAT:
                         return;
-                    case "RECV_RTCP_MESSAGE":
+                    case FsConstant.RECV_RTCP_MESSAGE:
                         return;
-                    case "CHANNEL_CREATE":
+                    case FsConstant.CHANNEL_CREATE:
                         break;
-                    case "CHANNEL_ORIGINATE":
+                    case FsConstant.CHANNEL_ORIGINATE:
                         break;
-                    case "CHANNEL_STATE":
+                    case FsConstant.CHANNEL_STATE:
                         return;
-                    case "CHANNEL_PROGRESS":
+                    case FsConstant.CHANNEL_PROGRESS:
                         break;
-                    case "CHANNEL_CALLSTATE":
+                    case FsConstant.CHANNEL_CALLSTATE:
                         break;
-                    case "CALL_UPDATE":
+                    case FsConstant.CALL_UPDATE:
                         break;
-                    case "CHANNEL_EXECUTE":
+                    case FsConstant.CHANNEL_EXECUTE:
                         logger.debug("CHANNEL_EXECUTE:{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "CHANNEL_PARK":
+                    case FsConstant.CHANNEL_PARK:
                         logger.debug("CHANNEL_PARK:{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "CHANNEL_UNPARK":
+                    case FsConstant.CHANNEL_UNPARK:
                         break;
-                    case "PRIVATE_COMMAND":
+                    case FsConstant.PRIVATE_COMMAND:
                         break;
-                    case "CHANNEL_EXECUTE_COMPLETE":
+                    case FsConstant.CHANNEL_EXECUTE_COMPLETE:
                         logger.debug("CHANNEL_EXECUTE_COMPLETE:{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "CHANNEL_HANGUP":
+                    case FsConstant.CHANNEL_HANGUP:
                         logger.debug("CHANNEL_HANGUP:{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "CHANNEL_HANGUP_COMPLETE":
+                    case FsConstant.CHANNEL_HANGUP_COMPLETE:
                         logger.debug("CHANNEL_HANGUP_COMPLETE:{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "CHANNEL_OUTGOING":
+                    case FsConstant.CHANNEL_OUTGOING:
                         logger.debug("CHANNEL_OUTGOING:{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "CHANNEL_ANSWER":
+                    case FsConstant.CHANNEL_ANSWER:
                         logger.debug("CHANNEL_ANSWER :  {}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "CHANNEL_DESTROY":
+                    case FsConstant.CHANNEL_DESTROY:
                         break;
-                    case "CHANNEL_BRIDGE":
+                    case FsConstant.CHANNEL_BRIDGE:
                         logger.debug("CHANNEL_BRIDGE :  {}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
-                    case "RECORD_START":
+                    case FsConstant.RECORD_START:
                         break;
 
-                    case "MEDIA_BUG_START":
+                    case FsConstant.MEDIA_BUG_START:
                         break;
 
-                    case "MEDIA_BUG_STOP":
+                    case FsConstant.MEDIA_BUG_STOP:
                         break;
 
-                    case "PLAYBACK_START":
+                    case FsConstant.PLAYBACK_START:
                         logger.debug("PLAYBACK_START :{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
 
-                    case "PLAYBACK_STOP":
+                    case FsConstant.PLAYBACK_STOP:
                         logger.debug("PLAYBACK_STOP :{}", JSONObject.toJSONString(event.getEventHeaders()));
                         break;
 
-                    case "CHANNEL_UNBRIDGE":
+                    case FsConstant.CHANNEL_UNBRIDGE:
                         break;
 
-                    case "CODEC":
+                    case FsConstant.CODEC:
                         return;
 
-                    case "RECV_INFO":
+                    case FsConstant.RECV_INFO:
                         logger.debug("RECV_INFO:{}", JSONObject.toJSONString(event.getEventHeaders()));
                         return;
 
-                    case "DTMF":
+                    case FsConstant.DTMF:
                         break;
 
-                    case "CHANNEL_PROGRESS_MEDIA":
+                    case FsConstant.CHANNEL_PROGRESS_MEDIA:
                         break;
 
-                    case "RECORD_STOP":
+                    case FsConstant.RECORD_STOP:
                         break;
-                    case "CUSTOM":
+                    case FsConstant.CUSTOM:
                         break;
-
+                    case FsConstant.RING_ASR:
+                        //媒体识别回铃音
+                        logger.debug("RING_ASR:{}", JSONObject.toJSONString(event.getEventHeaders()));
+                        break;
                     default:
                         logger.debug("event:{}, hander:{}", event.getEventName(), event.getEventHeaders().toString());
                         return;
@@ -326,7 +336,7 @@ public class FsListen {
                 }
             });
         }
-        scheduledExecutorService.shutdown();
+        checkFsThread.shutdown();
         executorMap.forEach((i, executor) -> {
             executor.shutdown();
         });
@@ -388,7 +398,12 @@ public class FsListen {
             builder.append(SPLIT).append(sipBuffer);
         }
         builder.append("}").append("sofia/external/").append(called).append(" &park");
-        fsClient.get(fsIpv4s.get(0)).sendBackgroundApiCommand(Constants.ORIGINATE, builder.toString());
+        CompletableFuture future = fsClient.get(fsIpv4s.get(0)).sendBackgroundApiCommand(Constants.ORIGINATE, builder.toString());
+        try {
+            logger.info("call response: {}", future.get());
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+        }
     }
 
 
@@ -417,10 +432,10 @@ public class FsListen {
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    public EslEvent transferCall(String media, String from, String to) throws ExecutionException, InterruptedException {
+    public void transferCall(String media, String from, String to) {
         StringBuilder builder = new StringBuilder();
-        builder.append(from).append(" -both 'set:hangup_after_bridge=false,set:park_after_bridge=true,park:' inline");
-        return fsClient.get(media).sendBackgroundApiCommand(Constants.TRANSFER, builder.toString()).get();
+        builder.append(from).append("  -both 'set:hangup_after_bridge=false,set:park_after_bridge=true,park:' inline ");
+        fsClient.get(media).sendBackgroundApiCommand(Constants.TRANSFER, builder.toString());
     }
 
 
@@ -428,9 +443,20 @@ public class FsListen {
      * @param sendMsg
      */
     public void sendMessage(String media, SendMsg sendMsg) {
-        fsClient.get(media).sendMessage(sendMsg);
+        if (StringUtils.isBlank(media)) {
+            logger.error("send to media is null, sendMsg:{}", sendMsg);
+            return;
+        }
+        sendThread.execute(() -> {
+            fsClient.get(media).sendMessage(sendMsg);
+        });
     }
 
+    /**
+     * @param media
+     * @param cmd
+     * @param args
+     */
     public void sendBgapiMessage(String media, String cmd, String args) {
         fsClient.get(media).sendBackgroundApiCommand(cmd, args);
     }
@@ -456,9 +482,10 @@ public class FsListen {
      */
     public void playback(String media, String deviceId, String file) {
         SendMsg playback = new SendMsg(deviceId);
-        playback.addCallCommand("execute");
-        playback.addExecuteAppName("playback");
+        playback.addCallCommand(FsConstant.EXECUTE);
+        playback.addExecuteAppName(FsConstant.PLAYBACK);
         playback.addExecuteAppArg(file);
+        playback.addAsync();
         this.sendMessage(media, playback);
     }
 
@@ -470,36 +497,27 @@ public class FsListen {
      */
     public void playbreak(String media, String deviceId) {
         SendMsg playback = new SendMsg(deviceId);
-        playback.addCallCommand("execute");
-        playback.addExecuteAppName("break");
+        playback.addCallCommand(FsConstant.EXECUTE);
+        playback.addExecuteAppName(FsConstant.BREAK_);
         this.sendMessage(media, playback);
     }
 
     public void hangupCall(String media, Long callId, String deviceId) {
         SendMsg hangupMsg = new SendMsg(deviceId);
-        hangupMsg.addCallCommand("execute");
-        hangupMsg.addExecuteAppName("hangup");
-        hangupMsg.addExecuteAppArg("NORMAL_CLEARING");
+        hangupMsg.addCallCommand(FsConstant.EXECUTE);
+        hangupMsg.addExecuteAppName(FsConstant.HANGUP);
+        hangupMsg.addExecuteAppArg(FsConstant.NORMAL_CLEARING);
         logger.info("hangup call:{}, device:{}", callId, deviceId);
         this.sendMessage(media, hangupMsg);
     }
 
-    public EslMessage stopCall(String media, String deviceId) {
-        SendMsg msg = new SendMsg(deviceId);
-        msg.addCallCommand("execute");
-        msg.addExecuteAppName("hangup");
-        msg.addExecuteAppArg("NORMAL_CLEARING");
-        return fsClient.get(media).sendMessage(msg).getResponse();
-    }
-
-
     public void sendArgs(String media, String deviceId, String name, String arg) {
         SendMsg msg = new SendMsg(deviceId);
-        msg.addCallCommand("execute");
+        msg.addCallCommand(FsConstant.EXECUTE);
         msg.addExecuteAppName(name);
         msg.addExecuteAppArg(arg);
-        fsClient.get(media).sendMessage(msg);
+        msg.addAsync();
+        this.sendMessage(media, msg);
     }
-
 
 }

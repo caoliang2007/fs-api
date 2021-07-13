@@ -2,9 +2,9 @@ package org.zhongweixian.cc.websocket.handler.base;
 
 import com.alibaba.fastjson.JSON;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.cti.cc.mapper.AgentStateLogMapper;
 import org.cti.cc.po.AgentInfo;
-import org.cti.cc.po.AgentState;
 import org.cti.cc.po.CallInfo;
 import org.cti.cc.po.GroupInfo;
 import org.slf4j.Logger;
@@ -109,8 +109,17 @@ public abstract class WsBaseHandler<T extends WsBaseEvent> implements Handler<T>
      * @param deivceId
      * @return
      */
-    protected EslMessage stopCall(String media, String deivceId) {
-        return fsListen.stopCall(media, deivceId);
+    protected void hangupCall(String media, Long callId, String deivceId) {
+        fsListen.hangupCall(media, callId, deivceId);
+    }
+
+    /**
+     * 随机生成deviceId
+     *
+     * @return
+     */
+    protected String getDeviceId() {
+        return RandomStringUtils.randomNumeric(16);
     }
 
     protected String getDeviceId(CallInfo callInfo, String... deviceIds) {

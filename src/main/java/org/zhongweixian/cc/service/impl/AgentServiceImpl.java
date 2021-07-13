@@ -61,27 +61,18 @@ public class AgentServiceImpl extends BaseServiceImpl<Agent> implements AgentSer
     @Override
     public AgentInfo getAgentInfo(String agentKey) {
         AgentInfo agentInfo = cacheService.getAgentInfo(agentKey);
-        if (agentInfo != null) {
-            return agentInfo;
-        }
         Agent agent = agentMapper.selectAgent(agentKey);
         if (agent == null) {
             return null;
         }
-        agentInfo = new AgentInfo();
+        if (agentInfo == null) {
+            agentInfo = new AgentInfo();
+        }
         BeanUtils.copyProperties(agent, agentInfo);
         agentInfo.setSips(this.getAgentSips(agent.getId()));
         return agentInfo;
     }
 
-    @Override
-    public Agent getAgentDb(String agentKey) {
-        Agent agent = agentMapper.selectAgent(agentKey);
-        if (agent == null) {
-            return null;
-        }
-        return agent;
-    }
 
     @Override
     public List<Long> getAgentGroups(Long agentId) {

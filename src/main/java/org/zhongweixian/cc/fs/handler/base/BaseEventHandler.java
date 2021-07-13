@@ -3,6 +3,7 @@ package org.zhongweixian.cc.fs.handler.base;
 import com.alibaba.fastjson.JSON;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.cti.cc.constant.FsConstant;
 import org.cti.cc.po.AgentInfo;
 import org.cti.cc.po.CallInfo;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.zhongweixian.cc.cache.CacheService;
 import org.zhongweixian.cc.command.*;
+import org.zhongweixian.cc.command.base.BaseHandler;
 import org.zhongweixian.cc.configration.Handler;
 import org.zhongweixian.cc.fs.FsListen;
 import org.zhongweixian.cc.fs.event.base.FsBaseEvent;
@@ -22,9 +24,9 @@ import org.zhongweixian.cc.websocket.response.WsResponseEntity;
 import org.zhongweixian.esl.transport.SendMsg;
 
 /**
- * Created by caoliang on 2020/8/29
+ * Created by caoliang on 2020/8/23
  */
-public abstract class BaseEventHandler<T extends FsBaseEvent> implements Handler<T> {
+public abstract class BaseEventHandler<T extends FsBaseEvent> extends BaseHandler implements Handler<T> {
     protected Logger logger = LoggerFactory.getLogger(BaseEventHandler.class);
 
     @Autowired
@@ -106,14 +108,23 @@ public abstract class BaseEventHandler<T extends FsBaseEvent> implements Handler
      * @param device1
      * @param device2
      */
-    protected void bridgeCall(String media, String device1, String device2) {
-        /*fsListen.sendArgs(media, device1, "park_after_bridge", "true");
-        fsListen.sendArgs(media, device1, "hangup_after_bridge", "false");
-        fsListen.sendArgs(media, device2, "hangup_after_bridge", "false");
-        fsListen.sendArgs(media, device2, "park_after_bridge", "true");*/
+    protected void callBridge(String media, String device1, String device2) {
+        fsListen.sendArgs(media, device1, FsConstant.SET, FsConstant.PARK_AFTER_BRIDGE);
+        fsListen.sendArgs(media, device1, FsConstant.SET, FsConstant.HANGUP_AFTER_BRIDGE);
+        fsListen.sendArgs(media, device2, FsConstant.SET, FsConstant.HANGUP_AFTER_BRIDGE);
+        fsListen.sendArgs(media, device2, FsConstant.SET, FsConstant.PARK_AFTER_BRIDGE);
         StringBuilder builder = new StringBuilder();
         builder.append(device1).append(Constants.SPACE).append(device2);
         fsListen.sendBgapiMessage(media, Constants.BRIDGE, builder.toString());
+    }
+
+    /**
+     * 随机生成deviceId
+     *
+     * @return
+     */
+    protected String getDeviceId() {
+        return RandomStringUtils.randomNumeric(16);
     }
 
 
@@ -135,6 +146,10 @@ public abstract class BaseEventHandler<T extends FsBaseEvent> implements Handler
         fsListen.sendBgapiMessage(media, Constants.RECORD, sb.toString());*/
     }
 
+    protected void transferCall(String media, String from, String to) {
+        fsListen.transferCall(media, from, to);
+    }
+
 
     /**
      * 放音
@@ -145,8 +160,8 @@ public abstract class BaseEventHandler<T extends FsBaseEvent> implements Handler
      */
     protected void playback(String media, String deviceId, String file) {
         SendMsg playback = new SendMsg(deviceId);
-        playback.addCallCommand("execute");
-        playback.addExecuteAppName("playback");
+        playback.addCallCommand(FsConstant.EXECUTE);
+        playback.addExecuteAppName(FsConstant.PLAYBACK);
         playback.addExecuteAppArg(file);
         fsListen.sendMessage(media, playback);
     }
@@ -162,9 +177,9 @@ public abstract class BaseEventHandler<T extends FsBaseEvent> implements Handler
             return;
         }
         SendMsg hangupMsg = new SendMsg(deviceId);
-        hangupMsg.addCallCommand("execute");
-        hangupMsg.addExecuteAppName("hangup");
-        hangupMsg.addExecuteAppArg("NORMAL_CLEARING");
+        hangupMsg.addCallCommand(FsConstant.EXECUTE);
+        hangupMsg.addExecuteAppName(FsConstant.HANGUP);
+        hangupMsg.addExecuteAppArg(FsConstant.NORMAL_CLEARING);
         logger.info("hangup callId:{}, device:{}", callId, deviceId);
         fsListen.sendMessage(media, hangupMsg);
     }
@@ -177,8 +192,8 @@ public abstract class BaseEventHandler<T extends FsBaseEvent> implements Handler
      */
     protected void answer(String media, String deviceId) {
         SendMsg answer = new SendMsg(deviceId);
-        answer.addCallCommand("execute");
-        answer.addExecuteAppName("answer");
+        answer.addCallCommand(FsConstant.EXECUTE);
+        answer.addExecuteAppName(FsConstant.ANSWER);
         fsListen.sendMessage(media, answer);
     }
 
@@ -189,14 +204,14 @@ public abstract class BaseEventHandler<T extends FsBaseEvent> implements Handler
      */
     protected void receiveDtmf(String media, Long callId, String deviceId) {
         SendMsg play = new SendMsg(deviceId);
-        play.addCallCommand("execute");
-        play.addExecuteAppName("set");
-        play.addExecuteAppArg("playback_delimiter=!");
+        play.addCallCommand(FsConstant.EXECUTE);
+        play.addExecuteAppName(FsConstant.SET);
+        play.addExecuteAppArg(FsConstant.PLAYBACK_DELIMITER);
         fsListen.sendMessage(media, play);
 
         SendMsg digits = new SendMsg(deviceId);
-        digits.addCallCommand("execute");
-        digits.addExecuteAppName("play_and_get_digits");
+        digits.addCallCommand(FsConstant.EXECUTE);
+        digits.addExecuteAppName(FsConstant.PLAY_AND_GET_DIGITS);
         digits.addExecuteAppArg("1 1 1 5000 # /app/clpms/sounds/1295e6a58f9e2115332666.wav silence_stream://250 SYMWRD_DTMF_RETURN [\\*0-9#]+ 3000");
         fsListen.sendMessage(media, digits);
     }

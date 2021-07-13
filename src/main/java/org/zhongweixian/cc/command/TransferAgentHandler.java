@@ -1,6 +1,5 @@
 package org.zhongweixian.cc.command;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cti.cc.entity.RouteGetway;
 import org.cti.cc.enums.NextType;
@@ -9,6 +8,7 @@ import org.cti.cc.po.CallInfo;
 import org.cti.cc.po.DeviceInfo;
 import org.cti.cc.po.NextCommand;
 import org.springframework.stereotype.Component;
+import org.zhongweixian.cc.command.base.BaseHandler;
 
 import java.time.Instant;
 
@@ -27,7 +27,7 @@ public class TransferAgentHandler extends BaseHandler {
      * @param thisDeviceId
      */
     public void hanlder(CallInfo callInfo, AgentInfo agentInfo, String thisDeviceId) {
-        String deviceId = RandomStringUtils.randomNumeric(16);
+        String deviceId = getDeviceId();
         String caller = agentInfo.getCalled();
         //坐席没有sip或者分机不存在
         if (StringUtils.isBlank(caller)) {
